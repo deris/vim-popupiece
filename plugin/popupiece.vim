@@ -31,8 +31,8 @@ let g:popupiece_before_additional_line = get(g:, 'popupiece_before_additional_li
 let g:popupiece_after_additional_line  = get(g:, 'popupiece_after_additional_line', 4)
 let g:popupiece_no_blank_line          = get(g:, 'popupiece_no_blank_line', 1)
 
-nnoremap <silent> <Plug>(popupiece-tag)         :<C-u>call popupiece#popup_tag()<CR>
-nnoremap <silent> <Plug>(popupiece-local-decl)  :<C-u>call popupiece#popup_local_declaration()<CR>
+nnoremap <silent> <Plug>(popupiece-tag)         :<C-u>silent! call popupiece#popup_tag()<CR>
+nnoremap <silent> <Plug>(popupiece-local-decl)  :<C-u>silent! call popupiece#popup_local_declaration()<CR>
 
 command! -nargs=0 PopupieceTag               call popupiece#popup_tag()
 command! -nargs=0 PopupieceLocalDeclaration  call popupiece#popup_local_declaration()
