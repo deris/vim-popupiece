@@ -27,42 +27,59 @@ set cpo&vim
 
 " Public API {{{1
 function! popupiece#popup_tag()
-  call s:move_and_popup(function('s:tag'), function('s:pop'))
+  call s:move_and_popup(function('s:tag'), function('s:pop'), 'popupiece#popup_tag', 1)
 endfunction
 
 function! popupiece#popup_local_declaration()
-  call s:move_and_popup(function('s:go_local_decl'), function('s:go_back'))
+  call s:move_and_popup(function('s:go_local_decl'), function('s:go_back'), 'popupiece#popup_local_declaration', 0)
 endfunction
 
-function! popupiece#popup_custom(pre_func, post_func)
-  call s:move_and_popup(a:pre_func, a:post_func)
+function! popupiece#popup_custom(pre_func, post_func, id_str, with_file_flag)
+  call s:move_and_popup(a:pre_func, a:post_func, a:id_str, a:with_file_flag)
 endfunction
 "}}}
 
 " Private {{{1
-function! s:tag()
-  execute "normal! \<C-]>"
+let s:tag_count = 0
+function! s:tag(count)
+  if a:count == 0 || s:tag_count == 0
+    execute "normal! \<C-]>"
+    let s:tag_count = 0
+  else
+    try
+      tnext
+    catch
+      let s:tag_count = 0
+      execute "normal! \<C-t>"
+      execute "normal! \<C-]>"
+    endtry
+  endif
+  let s:tag_count += 1
 endfunction
 
-function! s:pop()
+function! s:pop(count)
   execute "normal! \<C-t>"
 endfunction
 
-function! s:go_local_decl()
+function! s:go_local_decl(count)
   execute "normal! gd"
 endfunction
 
-function! s:go_back()
+function! s:go_back(count)
   execute "normal! \<C-o>"
 endfunction
 
-function! s:move_and_popup(pre_func, post_func)
+let s:current_id_str = ''
+let s:call_count = 0
+function! s:move_and_popup(pre_func, post_func, id_str, with_file_flag)
   if !exists('*popup_create')
     echohl WarningMsg
     echom printf('[error] popup_create is not supported')
     echohl None
     return
   endif
+
+  call popup_clear()
 
   let save_view = {}
   let first_pos = 0
@@ -71,7 +88,15 @@ function! s:move_and_popup(pre_func, post_func)
   try
     let first_pos = getcurpos()
     let save_view = winsaveview()
-    call function(a:pre_func)()
+    if a:id_str == s:current_id_str && first_pos == s:prev_pos
+      let s:call_count += 1
+    else
+      let s:call_count = 0
+    endif
+    let s:current_id_str = a:id_str
+    let s:prev_pos = first_pos
+
+    call function(a:pre_func)(s:call_count)
     let cur_pos = getcurpos()
     if first_pos == cur_pos
       return
@@ -79,14 +104,18 @@ function! s:move_and_popup(pre_func, post_func)
     let has_jumped = 1
     let lines = s:get_around_lines(g:popupiece_before_additional_line, g:popupiece_after_additional_line, g:popupiece_no_blank_line)
     call map(lines, {key, val -> substitute(val, "\t", repeat(' ', &tabstop), 'g')})
+    if a:with_file_flag == 1
+      let file = expand('%:p')
+      call extend(lines, ['', printf('%s:%d:%d', file, cur_pos[1], cur_pos[2])])
+    endif
   finally
     if has_jumped == 1
-      call function(a:post_func)()
+      call function(a:post_func)(s:call_count)
       call winrestview(save_view)
     else
       let cur_pos = getcurpos()
       if first_pos != cur_pos
-        call function(a:post_func)()
+        call function(a:post_func)(s:call_count)
         call winrestview(save_view)
       endif
     endif
